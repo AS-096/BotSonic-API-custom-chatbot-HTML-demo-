@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Chatsonic Bot</title>
+    </head>
+
+    <style>
+        /* animation */
+        * {
+            transition: ease-in-out;
+            transition-duration: 0.3s;
+        }
+        /* make characters non-selectable */
+        .unsel {
+            user-select: none;
+            -moz-user-select: none;
+            -khtml-user-select: none;
+            -webkit-user-select: none;
+            -o-user-select: none;
+        }
+        /* change the cursor to pointer when hovering on button */
+        button {
+            cursor: pointer;
+        }
+        body {
+            padding: 0px;
+            margin: 0px;
+            background-color: white;
+        }
+        /* format for the div containing everything (hieght and width should be exactly the same as the viewport) */
+        #chat_panel {
+            height: 100vh;
+            width: 100%;
+        }
+        /* top div containing basic info of the bot and the reset chat button */
+        #botinfoarea {
+            padding-left: 3vw;
+            height: 10vh;
+            background-color: #adadad;
+            display: flex;
+            position: relative;
+            align-items: center;
+            font-size: 30px;
+            margin: auto;
+        }
+        /* the div containing the input box and send button*/
+        #inputarea {
+            height: 9vh;
+            background-color: white;
+            border-top: 1px rgb(229 231 235) solid;
+            display: flex;
+            position: relative;
+            align-items: center;
+            padding: 0.3vh;
+        }
+        /* the contenteditable div where user inputs */
+        #actualinput {
+            height: 8.4vh;
+            width: 85%;
+            background: #eee;
+            border-radius: 5px;
+            overflow-y: auto;
+            padding-left: 3px;
+            padding-right: 3px;
+            font-size: medium;
+        }
+        /* user input div when focusing (typing) */
+        #actualinput:focus {
+            background: #c2c2c2;
+            outline: 2px groove #6ec3fc;
+        }
+        /* user input div when mouse hover */
+        #actualinput:hover {
+            background: #b1b1b1;
+            
+        }
+        /* send button */
+        #send {
+            height: 8.4vh;
+            width: 13%;
+            background-color: #757575;
+            border-radius: 5px;
+            text-align: center;
+            line-height: 8.4vh;
+            overflow: hidden;
+            border: none;
+            color: #c2c2c2;
+        }
+        /* send button when hover */
+        #send:hover {
+            background-color: #c2c2c2;
+            color: #757575;
+        }
+        /* placeholder text within user input div */
+        #actualinput[placeholder]:empty:before {
+            content: attr(placeholder);
+            color: #808080; 
+        }
+        /* reset button */
+        #reset {
+            border-radius: 5px;
+            text-align: center;
+            line-height: 4vh;
+            overflow: hidden;
+            border: none;
+            background-color: #757575;
+            color: #c2c2c2;
+            font-size: 15px;
+        }
+        /* reset button on hover */
+        #reset:hover {
+            background-color: #c2c2c2;
+            color: #757575;
+        }
+        /* div where messages should appear */
+        #messagearea {
+            height: 78vh;
+            overflow-y: auto;
+            font-size: 23px;
+            padding: 5px;
+        }
+        /* div containing messages */
+        .msgdiv {
+            display: block;
+            margin: 0.5rem 0 0 0;
+        }
+        /* message from bot */
+        .botmsg {
+            text-align: left; 
+            width: fit-content;
+            max-width: 80%;
+            display: flex;
+            align-items: start;
+            margin-left: 0.5rem;
+            margin-right: auto;
+            border-radius: 0 1rem 1rem 1rem;
+            background-color: #dddddd;
+            padding: 10px;
+        }
+        /* message from user */
+        .usermsg{
+            text-align: right;
+            width: fit-content;
+            max-width: 80%;
+            display: flex;
+            align-items: start;
+            margin-left: auto;
+            margin-right: 0.5rem;
+            border-radius: 1rem 0 1rem 1rem;
+            background-color: #dadada;
+            padding: 10px;
+        }
+        
+    </style>
+
+    <body>
+        <div id="chat_panel">
+            <div id="botinfoarea">
+                <div style="width: 50vw" class="unsel">Botsonic chat</div>
+                <div style="width: 25vw;"></div>
+                <button id="reset" style="width: 20vw;">reset chat</button>
+            </div>
+            <div id="messagearea">
+            </div>
+            <div id="inputarea">
+                <div style="width: .5%;"></div>
+                <div contenteditable="true" id="actualinput" placeholder="Send a message..." autofocus></div>
+                <div style="width: 1%;"></div>
+                <button id="send">Send</button>
+                <div style="width: .5%;"></div>
+            </div>
+        </div>
+        <script>
+            //auto "send" default message when loaded 
+            document.addEventListener("DOMContentLoaded", (event) => {
+                const msgarea = document.getElementById('messagearea');
+                const welcomemsg = document.createElement('div');
+                welcomemsg.innerHTML = '<div class="botmsg">Hi! I am [Bot name]!</div>';
+                welcomemsg.classList.add('msgdiv');
+                msgarea.appendChild(welcomemsg);
+            });
+            
+            //variable storing chat history of bot and user
+            var chathist = '[]';
+
+            //function when send is clicked
+            const sendclicked = async function(){          
+                //get the input message, transforming "&nbsp"(space in a content editable div) and "<div><br></div>"(enter in a content editable div) into space      
+                const messageininput = document.getElementById('actualinput').innerHTML.replaceAll('&nbsp;',' ').replaceAll('<div>','').replaceAll('</div>','').replaceAll('<br>',' ');
+                //removing leading and ending spaces in message
+                const checkempty = messageininput.trim();
+                //for debugging, length check: console.log(checkempty.length);
+                //check if the message exist, i.e.,not null, after triming
+                if(checkempty.length !== 0){
+                    //put the message sent by user inside the message area just like any other chat app
+                    const msgarea = document.getElementById('messagearea');
+                    const msgsend = document.createElement('div');
+                    msgsend.innerHTML = '<div class="usermsg">'+ messageininput.trim() +'</div>';
+                    msgsend.classList.add('msgdiv');
+                    msgarea.appendChild(msgsend);
+                    //auto scroll to the bottom
+                    msgarea.scrollTop = msgarea.scrollHeight;
+                    document.getElementById('actualinput').innerHTML = '';
+                    //for debugging, console.log('sent');
+                    
+                    //using Botsonic API
+                    //put in your API endpoint
+                    const response = await fetch('your Botsonic API endpoint', {
+                                              method: 'POST',
+                                              headers: {
+                                                  'Accept-Encoding': 'gzip, deflate',
+                                                  'Connection': 'keep-alive',
+                                                  'Content-Type': 'application/json',
+                                                  'User-Agent': 'python-requests/2.28.1',
+                                                  'accept': 'application/json',
+                                                  //put in your API token
+                                                  'token': 'Your API token'
+                                              },
+                                              //attaching body (chat information to the request)
+                                              body: JSON.stringify({
+                                                  //pass in user input
+                                                  'question': messageininput,
+                                                  //pass in chat history for the bot to response correspondingly when needed
+                                                  'chat_history': JSON.parse(chathist)
+                                              })
+                                          });
+                    //get response
+                    const jsonResponse = await response.json();
+                    //put response as message sent by the bot in the message area
+                    const resfrombot = document.createElement('div');
+                    resfrombot.innerHTML = '<div class="botmsg">'+jsonResponse[0]["data"]["answer"]+'</div>';
+                    resfrombot.classList.add('msgdiv');
+                    msgarea.appendChild(resfrombot);
+                    //update the chat history variable to that passed back by
+                    chathist = JSON.stringify(jsonResponse[0]["data"]["chat_history"]);
+                    //console.log(chathist);
+                    //auto scroll to the bottom
+                    msgarea.scrollTop = msgarea.scrollHeight;
+                } else {
+                    //when the input is blank / only space / new line (enter)  
+                    alert('Please input message before sending.');
+                }
+            }
+
+            //fuction when reset is clicked
+            const resetclicked = async function(){
+                //reset chat history variable
+                chathist = '[]';
+                //clear chat history (everything within message area div)
+                document.getElementById('messagearea').innerHTML = '';
+                //for debugging, console.log('reset');
+                //notify users about the rest by sending a message to user
+                const msgarea = document.getElementById('messagearea');
+                const rstmsg = document.createElement('div');
+                rstmsg.innerHTML = "<div class='botmsg'>Let's start again!</div>";
+                rstmsg.classList.add('msgdiv');
+                msgarea.appendChild(rstmsg);
+            }
+
+            //adding event listeners to reset and send button to call their function when clicked respectively 
+            document.getElementById('reset').addEventListener('click',resetclicked);
+            document.getElementById('send').addEventListener('click',sendclicked);
+
+            //prevent users from inputting "enter"(new line)
+            document.getElementById('actualinput').addEventListener('keydown', (evt) => {
+                if (evt.keyCode === 13) {
+                    evt.preventDefault();
+                }
+            });
+            //let pressing the "Enter" key on keyboard act as sending message
+            document.getElementById('actualinput').addEventListener('keyup', event => {
+                if(event.key !== "Enter") return;
+                if(document.activeElement === document.getElementById('actualinput')){
+                    document.getElementById('send').click();
+                }
+                event.preventDefault();
+            });
+            //prevent pasting with format
+            document.getElementById('actualinput').addEventListener('paste',event => {
+                event.preventDefault();
+                var text = event.clipboardData.getData('text/plain');
+                document.execCommand('insertText', false, text);
+            });
+            
+        </script>
+
+
+
+
+
+    </body>
+</html>
